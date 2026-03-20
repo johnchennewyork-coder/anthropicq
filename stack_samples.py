@@ -36,22 +36,28 @@ def convert_stack_samples_to_trace(samples: List[Sample]):
   '''
   the first time we see a new function, we will output "start"
   currently_running_functions = set()
+
+  now, lets handle the case where it can call itself
   '''
   assert len(samples) > 0, "no samples passed in"
-  curr_running_stack = [samples[0].stack] #
+  curr_running_stack = samples[0].stack #
   res = ['start ' + x for x in curr_running_stack]
   
   for i in range(1,len(samples)):
     prefix = compare_prefix(curr_running_stack, samples[i].stack)
     if curr_running_stack[len(prefix):]:
-      ended_functions = set(samples[i].stack[len(prefix):])
-      for i in range(len(ended_functions)-1, -1, -1):
-        res.append(f'end {ended_functions[i]}')
+      ended_functions = (curr_running_stack[i].stack[len(prefix):])
+      for j in range(len(ended_functions)-1, -1, -1):
+        res.append(f'end {ended_functions[j]}')
     if samples[i].stack[len(prefix):]:
-      new_functions = set(samples[i].stack[len(prefix):]) 
-      for i in range(len(new_functions):
-        res.append(f'start {new_functions[i]}')
+      new_functions = (samples[i].stack[len(prefix):]) 
+      for j in range(len(new_functions)):
+        res.append(f'start {new_functions[j]}')
     curr_running_stack = samples[i].stack
+
+  # cleanup
+  for i in range(len(curr_running_stack)-1, -1, -1):
+    res.append(f'end {curr_running_stack[i]}')
 
   return res
 # --- TEST CASE 1: Basic nested calls ---
