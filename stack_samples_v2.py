@@ -1,6 +1,6 @@
 
 from typing import List, Tuple
-
+from collections import defaultdict
 '''
 
 '''
@@ -35,7 +35,7 @@ def get_prefix_index(stack1: List[str], stack2: List[str]):
     Returns the termination index of the prefix.
     '''
     for i, (s1,s2) in enumerate(zip(stack1,stack2)):
-        print(i, s1, s2)
+        # print(i, s1, s2)
         if s1 != s2:
             return i 
      
@@ -54,22 +54,32 @@ def convert_stack_samples(samples: List[Tuple]):
     
     assert len(samples) > 0, "empty stack samples trace passed in"
     res = []
-    prev_sample = samples[0].stack
-    res.extend(["start " + fn for fn in prev_sample])
+    prev_sample = samples[0]
+    fns = [fn for fn in prev_sample.stack]
+    res.extend([f"[{prev_sample.ts}] start {fn}" for fn in fns])
+    running_times = defaultdict(int)
+    for fn in prev_sample.stack:
+        running_times[fn] += prev_sample.ts - 0
+    # start_times = {fn: prev_sample.ts for fn in fns}
 
+    
     for i in range(1, len(samples)):
-        curr_sample = samples[i].stack
-        prefix_idx = get_prefix_index(prev_sample, curr_sample)
-        ended_fns = prev_sample[prefix_idx:]
-        started_fns = curr_sample[prefix_idx:]
-        print(f'prefix_idx {prefix_idx}, {started_fns}')
+        curr_sample = samples[i]
+        prefix_idx = get_prefix_index(prev_sample.stack, curr_sample.stack)
+        ended_fns = prev_sample.stack[prefix_idx:]
+        started_fns = curr_sample.stack[prefix_idx:]
+        # print(f'prefix_idx {prefix_idx}, {started_fns}')
         if len(ended_fns) > 0:
-            res.extend(["end " + fn for fn in reversed(ended_fns)])
+            res.extend([f"[{samples[i].ts}] end {fn}" for fn in reversed(ended_fns)])
         if len(started_fns) > 0:
-            res.extend(["start " + fn for fn in started_fns])
+            res.extend([f"[{samples[i].ts}] start {fn}" for fn in started_fns])
+
+        for fn in prev_sample.stack:
+            running_times[fn] += curr_sample.ts - prev_sample.ts
+
         prev_sample = curr_sample
 
-    return res 
+    return res, running_times 
 
 
 
@@ -87,6 +97,7 @@ if __name__ == "__main__":
 
     res = convert_stack_samples(samples1)
     print('ex1,',res) # start main, start func1, end func1
+    print('********') # start main, start f1, start f1, end f1
 
 
     
@@ -98,6 +109,7 @@ if __name__ == "__main__":
     ]
     res = convert_stack_samples(samples2)
     print(res) # start main, start func1
+    print('********') # start main, start f1, start f1, end f1
 
 
     # Test Case 3: Recursive Calls
@@ -109,6 +121,8 @@ if __name__ == "__main__":
 
     res = convert_stack_samples(samples3)
     print(res) # start main, start f1, start f1, end f1
+    print('********') # start main, start f1, start f1, end f1
+
 
 
     # Test Case 4: Multiple ends at the same time
@@ -121,6 +135,7 @@ if __name__ == "__main__":
 
     res = convert_stack_samples(samples4)
     print(res) # start main, start f1, start f1, end f1
+    print('********') # start main, start f1, start f1, end f1
     
 
     # Test Case 5: Multiple ends at the same time
@@ -133,6 +148,7 @@ if __name__ == "__main__":
 
     res = convert_stack_samples(samples5)
     print(res) # ['start main', 'start f1', 'start f2', 'start f3', 'end f3', 'end f2', 'end f1', "a1", "a2"]
+    print('********') # start main, start f1, start f1, end f1
 
     # Time complexity:
     # assume N samples, and K possible recursion depth
@@ -142,4 +158,6 @@ if __name__ == "__main__":
     # prefix_idx is constant space, but O(NK) for the result array. otherwise, it could be yielded (constant space)
 
 
-    # follow-up can 
+    # follow-up # 1. What if we want to include the timestamps in the output events?
+    # follow-up # 2. What if we want to know how long each function is running (include time when paused)? 
+    # You may assume that the function runs for the whole interval, and don't worry about recursive for now
